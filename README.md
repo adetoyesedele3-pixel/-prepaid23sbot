@@ -1,6 +1,6 @@
 # Prepaid23s Telegram Bot
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/YOUR_TEMPLATE)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/)
 
 A powerful multi-purpose Telegram bot with URL shortening, gift card conversion, AI image generation, word counter, and plagiarism checker.
 
@@ -12,26 +12,37 @@ A powerful multi-purpose Telegram bot with URL shortening, gift card conversion,
 - 📝 **Word Counter** - Analyze text with statistics
 - 🔍 **Plagiarism Checker** - Check content originality
 
-## 🚀 Quick Deploy
+## 🚀 Deploy on Railway
 
-### Option 1: Deploy on Railway (Recommended)
+1. Fork this repository
+2. Go to [Railway.app](https://railway.app)
+3. Click "New Project" → "Deploy from GitHub repo"
+4. Select your repository
+5. Add environment variable: `TELEGRAM_BOT_TOKEN`
 
-1. Click the "Deploy on Railway" button above
-2. Add environment variable: `TELEGRAM_BOT_TOKEN`
-3. Done!
+## 🔧 Environment Variables
 
-### Option 2: Manual Deployment
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | Yes | Your bot token from @BotFather |
 
-```bash
-# Clone repository
-git clone https://github.com/yourusername/prepaid23s-bot
-cd prepaid23s-bot
+## 📋 Commands
 
-# Install dependencies
-pip install -r requirements.txt
+- `/start` - Show main menu
+- `/help` - Get help
+- `/about` - About the bot
+- `/shorten URL` - Shorten a URL
+- `/giftcard` - Check gift card rates
+- `/convert AMOUNT CARD` - Convert gift card
+- `/imagine prompt` - Generate AI image
+- `/count text` - Count words
+- `/plagiarism text` - Check plagiarism
 
-# Set environment variable
-export TELEGRAM_BOT_TOKEN="your_bot_token"
+## 📦 Dependencies
 
-# Run bot
-python bot.py
+- python-telegram-bot==20.7
+- Pillow==10.3.0
+
+## 📞 Support
+
+Contact: @prepaidsAdmin
