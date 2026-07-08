@@ -11,8 +11,8 @@ import random
 import string
 import logging
 from datetime import datetime
-from typing import Dict, Optional, Tuple
-from dataclasses import dataclass
+from typing import Dict, Optional, Tuple, List, Any
+from dataclasses import dataclass, field
 from enum import Enum
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -38,6 +38,15 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+# Try to import PIL for image generation
+try:
+    from PIL import Image, ImageDraw, ImageFont
+    PIL_AVAILABLE = True
+    logger.info("✅ PIL loaded successfully")
+except ImportError as e:
+    PIL_AVAILABLE = False
+    logger.warning(f"⚠️ PIL not available - Image generation will use text-only mode: {e}")
 
 # ============= DATA CLASSES =============
 
@@ -315,12 +324,12 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 *✨ Features:*
 ✅ URL Shortening
 ✅ Gift Card Conversion (15+ cards)
-✅ AI Image Generation
+{'✅ AI Image Generation' if PIL_AVAILABLE else '⚠️ Image Generation (PIL not available)'}
 ✅ Word Counter with Analytics
 ✅ Plagiarism Checker
 
 *🛠️ Technology:*
-🐍 Python 3.11
+🐍 Python 3.13
 🤖 python-telegram-bot 20.7
 🚀 Hosted on Railway
 📦 Source on GitHub
@@ -328,7 +337,7 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 *👥 Statistics:*
 📊 {len(GIFT_CARDS)} Gift Cards Supported
 🔗 URL Shortening Active
-🖼️ AI Image Generation Ready
+{'🖼️ AI Image Generation Ready' if PIL_AVAILABLE else '🖼️ Image Generation Limited'}
 
 *📞 Support:*
 For issues or suggestions, contact @prepaidsAdmin
@@ -394,7 +403,7 @@ async def shorten_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 # ============= GIFT CARD HANDLERS =============
 
-async def giftcard_command(update: Update, context: ContextTypes.DTYPE) -> None:
+async def giftcard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /giftcard command"""
     rates_text = "🎁 *Gift Card Exchange Rates*\n\n"
     rates_text += "💰 *Current Rates (1 USD value):*\n"
@@ -412,7 +421,7 @@ async def giftcard_command(update: Update, context: ContextTypes.DTYPE) -> None:
     rates_text += f"💰 *Maximum Amount:* $5000\n\n"
     rates_text += "📝 *How to Convert:*\n"
     rates_text += "`/convert AMOUNT CARD`\n"
-    rates_text += "Example: `$/convert 100 Amazon`\n\n"
+    rates_text += "Example: `/convert 100 Amazon`\n\n"
     rates_text += "⚠️ *Note:* Rates fluctuate. Contact @prepaidsAdmin for large amounts."
     
     await update.message.reply_text(
@@ -421,7 +430,7 @@ async def giftcard_command(update: Update, context: ContextTypes.DTYPE) -> None:
         reply_markup=get_giftcard_keyboard()
     )
 
-async def convert_command(update: Update, context: ContextTypes.DTYPE) -> None:
+async def convert_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /convert command"""
     try:
         if len(context.args) < 2:
@@ -524,7 +533,7 @@ async def convert_command(update: Update, context: ContextTypes.DTYPE) -> None:
 
 # ============= IMAGE GENERATOR =============
 
-async def imagine_command(update: Update, context: ContextTypes.DTYPE) -> None:
+async def imagine_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /imagine command"""
     if not context.args:
         await update.message.reply_text(
@@ -550,81 +559,88 @@ async def imagine_command(update: Update, context: ContextTypes.DTYPE) -> None:
     )
     
     try:
-        # In production, integrate with an AI image API
-        # Example: Hugging Face Stable Diffusion API
-        # For now, generate a placeholder image
-        
-        from PIL import Image, ImageDraw, ImageFont
-        
-        # Create a colorful abstract image
-        img_width, img_height = 512, 512
-        img = Image.new('RGB', (img_width, img_height), color=(40, 44, 52))
-        draw = ImageDraw.Draw(img)
-        
-        # Draw random geometric shapes based on prompt
-        colors = [
-            (255, 99, 71), (135, 206, 250), (255, 215, 0),
-            (152, 251, 152), (255, 182, 193), (147, 112, 219)
-        ]
-        
-        # Generate artistic shapes
-        for _ in range(30):
-            x = random.randint(0, img_width)
-            y = random.randint(0, img_height)
-            size = random.randint(20, 100)
-            color = random.choice(colors)
-            shape_type = random.choice(['circle', 'rectangle', 'triangle'])
+        if PIL_AVAILABLE:
+            # Use PIL for image generation
+            # Create a colorful abstract image
+            img_width, img_height = 512, 512
+            img = Image.new('RGB', (img_width, img_height), color=(40, 44, 52))
+            draw = ImageDraw.Draw(img)
             
-            if shape_type == 'circle':
-                draw.ellipse([x-size//2, y-size//2, x+size//2, y+size//2], fill=color, outline=None)
-            elif shape_type == 'rectangle':
-                draw.rectangle([x-size//2, y-size//2, x+size//2, y+size//2], fill=color, outline=None)
-            else:
-                points = [
-                    (x, y - size//2),
-                    (x - size//2, y + size//2),
-                    (x + size//2, y + size//2)
-                ]
-                draw.polygon(points, fill=color)
-        
-        # Add text overlay with prompt
-        try:
-            # Try to use a default font
-            font = ImageFont.load_default()
-            # Add prompt at bottom
-            draw.text((10, img_height - 80), f"Generated Image", fill=(255, 255, 255), font=font)
-            draw.text((10, img_height - 60), prompt[:50], fill=(200, 200, 200), font=font)
-            draw.text((10, img_height - 40), f"by Prepaid23s Bot", fill=(150, 150, 150), font=font)
-        except:
-            pass
-        
-        # Add some stars/sparkles
-        for _ in range(15):
-            x = random.randint(0, img_width)
-            y = random.randint(0, img_height)
-            size = random.randint(2, 5)
-            draw.ellipse([x-size, y-size, x+size, y+size], fill=(255, 255, 255), outline=None)
-        
-        # Convert to bytes
-        import io
-        image_bytes = io.BytesIO()
-        img.save(image_bytes, format='PNG', quality=95)
-        image_bytes.seek(0)
-        
-        # Delete processing message
-        await processing_msg.delete()
-        
-        # Send the generated image
-        await update.message.reply_photo(
-            photo=image_bytes,
-            caption=f"🖼️ *Image Generated!*\n\n"
-                    f"📝 *Prompt:* {prompt}\n"
-                    f"📐 *Resolution:* 512x512\n"
-                    f"🎨 *Style:* Abstract Art\n\n"
-                    f"⚡ *Note:* For production use, integrate with an AI API.\n"
-                    f"Contact @prepaidsAdmin for premium image generation.",
-            parse_mode='Markdown'
-        )
+            # Draw random geometric shapes based on prompt
+            colors = [
+                (255, 99, 71), (135, 206, 250), (255, 215, 0),
+                (152, 251, 152), (255, 182, 193), (147, 112, 219)
+            ]
+            
+            # Generate artistic shapes
+            for _ in range(30):
+                x = random.randint(0, img_width)
+                y = random.randint(0, img_height)
+                size = random.randint(20, 100)
+                color = random.choice(colors)
+                shape_type = random.choice(['circle', 'rectangle', 'triangle'])
+                
+                if shape_type == 'circle':
+                    draw.ellipse([x-size//2, y-size//2, x+size//2, y+size//2], fill=color, outline=None)
+                elif shape_type == 'rectangle':
+                    draw.rectangle([x-size//2, y-size//2, x+size//2, y+size//2], fill=color, outline=None)
+                else:
+                    points = [
+                        (x, y - size//2),
+                        (x - size//2, y + size//2),
+                        (x + size//2, y + size//2)
+                    ]
+                    draw.polygon(points, fill=color)
+            
+            # Add text overlay with prompt
+            try:
+                # Try to use a default font
+                font = ImageFont.load_default()
+                # Add prompt at bottom
+                draw.text((10, img_height - 80), "Generated Image", fill=(255, 255, 255), font=font)
+                draw.text((10, img_height - 60), prompt[:50], fill=(200, 200, 200), font=font)
+                draw.text((10, img_height - 40), f"by Prepaid23s Bot", fill=(150, 150, 150), font=font)
+            except:
+                pass
+            
+            # Add some stars/sparkles
+            for _ in range(15):
+                x = random.randint(0, img_width)
+                y = random.randint(0, img_height)
+                size = random.randint(2, 5)
+                draw.ellipse([x-size, y-size, x+size, y+size], fill=(255, 255, 255), outline=None)
+            
+            # Convert to bytes
+            import io
+            image_bytes = io.BytesIO()
+            img.save(image_bytes, format='PNG', quality=95)
+            image_bytes.seek(0)
+            
+            # Delete processing message
+            await processing_msg.delete()
+            
+            # Send the generated image
+            await update.message.reply_photo(
+                photo=image_bytes,
+                caption=f"🖼️ *Image Generated!*\n\n"
+                        f"📝 *Prompt:* {prompt}\n"
+                        f"📐 *Resolution:* 512x512\n"
+                        f"🎨 *Style:* Abstract Art\n\n"
+                        f"⚡ *Note:* For production use, integrate with an AI API.\n"
+                        f"Contact @prepaidsAdmin for premium image generation.",
+                parse_mode='Markdown'
+            )
+        else:
+            # PIL not available - send text response
+            await processing_msg.delete()
+            await update.message.reply_text(
+                f"🖼️ *Image Generation*\n\n"
+                f"📝 *Prompt:* {prompt}\n\n"
+                f"⚠️ *Image generation is currently limited.*\n"
+                f"🔄 Please try again later or contact @prepaidsAdmin.\n\n"
+                f"💡 *Word Counter:* Use /count to analyze text instead!",
+                parse_mode='Markdown'
+            )
         
     except Exception as e:
         logger.error(f"Image generation error: {e}")
@@ -637,7 +653,7 @@ async def imagine_command(update: Update, context: ContextTypes.DTYPE) -> None:
 
 # ============= WORD COUNTER =============
 
-async def count_command(update: Update, context: ContextTypes.DTYPE) -> None:
+async def count_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /count command"""
     if not context.args:
         await update.message.reply_text(
@@ -675,7 +691,7 @@ async def count_command(update: Update, context: ContextTypes.DTYPE) -> None:
 
 # ============= PLAGIARISM CHECKER =============
 
-async def plagiarism_command(update: Update, context: ContextTypes.DTYPE) -> None:
+async def plagiarism_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /plagiarism command"""
     if not context.args:
         await update.message.reply_text(
@@ -742,7 +758,7 @@ async def plagiarism_command(update: Update, context: ContextTypes.DTYPE) -> Non
 
 # ============= MESSAGE HANDLER =============
 
-async def handle_text(update: Update, context: ContextTypes.DTYPE) -> None:
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle any text messages"""
     text = update.message.text.strip()
     
@@ -802,7 +818,7 @@ async def handle_text(update: Update, context: ContextTypes.DTYPE) -> None:
 
 # ============= CALLBACK QUERY HANDLER =============
 
-async def handle_callback(update: Update, context: ContextTypes.DTYPE) -> None:
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle callback queries from inline keyboards"""
     query = update.callback_query
     await query.answer()
@@ -1024,7 +1040,11 @@ async def handle_callback(update: Update, context: ContextTypes.DTYPE) -> None:
             "❌ *Cancelled!*",
             parse_mode='Markdown'
         )
-        await query.message.delete()
+        # Try to delete the original message
+        try:
+            await query.message.delete()
+        except:
+            pass
         return
     
     # Fallback
@@ -1035,7 +1055,7 @@ async def handle_callback(update: Update, context: ContextTypes.DTYPE) -> None:
 
 # ============= ERROR HANDLER =============
 
-async def error_handler(update: Update, context: ContextTypes.DTYPE) -> None:
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle errors"""
     logger.error(f"Update {update} caused error {context.error}")
     
@@ -1054,6 +1074,8 @@ async def error_handler(update: Update, context: ContextTypes.DTYPE) -> None:
 def main() -> None:
     """Main function to start the bot"""
     logger.info("🚀 Starting Prepaid23s Bot...")
+    logger.info(f"✅ PIL Available: {PIL_AVAILABLE}")
+    logger.info(f"✅ Bot Token: {'*' * 10} (hidden)")
     
     # Create application
     application = ApplicationBuilder() \
