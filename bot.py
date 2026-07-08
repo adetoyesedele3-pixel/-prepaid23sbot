@@ -1,6 +1,6 @@
 """
 Prepaid23s Bot - Multi-purpose Telegram Bot
-Features: URL Shortener, Gift Card Converter, Image Generator, Word Counter, Plagiarism Checker
+Features: URL Shortener, Gift Card Converter, Word Counter, Plagiarism Checker
 Deployed on Railway with GitHub
 """
 
@@ -13,7 +13,6 @@ import logging
 from datetime import datetime
 from typing import Dict, Optional, Tuple, List, Any
 from dataclasses import dataclass, field
-from enum import Enum
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -38,15 +37,6 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
-
-# Try to import PIL for image generation
-try:
-    from PIL import Image, ImageDraw, ImageFont
-    PIL_AVAILABLE = True
-    logger.info("✅ PIL loaded successfully")
-except ImportError as e:
-    PIL_AVAILABLE = False
-    logger.warning(f"⚠️ PIL not available - Image generation will use text-only mode: {e}")
 
 # ============= DATA CLASSES =============
 
@@ -106,15 +96,14 @@ COMMANDS = {
     '/shorten': '🔗 Shorten a URL',
     '/giftcard': '🎁 Check gift card rates',
     '/convert': '💱 Convert gift card',
-    '/imagine': '🖼️ Generate AI image',
     '/count': '📝 Count words in text',
     '/plagiarism': '🔍 Check text for plagiarism'
 }
 
-# ============= STORAGE (In-memory - replace with database in production) =============
+# ============= STORAGE =============
 
 class BotStorage:
-    """Simple in-memory storage (for demo purposes)"""
+    """Simple in-memory storage"""
     
     def __init__(self):
         self.urls: Dict[str, ShortenedURL] = {}
@@ -163,7 +152,7 @@ def analyze_text(text: str) -> AnalysisResult:
     sentences = max(0, sentences)
     paragraphs = len([p for p in text.split('\n') if p.strip()])
     paragraphs = max(1, paragraphs)
-    reading_time = words / 200  # Average reading speed: 200 words per minute
+    reading_time = words / 200
     
     return AnalysisResult(
         words=words,
@@ -177,11 +166,11 @@ def analyze_text(text: str) -> AnalysisResult:
 def validate_url(url: str) -> bool:
     """Validate if a string is a valid URL"""
     url_pattern = re.compile(
-        r'^https?://'  # http:// or https://
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # domain...
-        r'localhost|'  # localhost...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
-        r'(?::\d+)?'  # optional port
+        r'^https?://'
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'
+        r'localhost|'
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
+        r'(?::\d+)?'
         r'(?:/?|[/?]\S+)$', re.IGNORECASE
     )
     return bool(url_pattern.match(url))
@@ -190,12 +179,10 @@ def get_card_by_name(name: str) -> Optional[GiftCard]:
     """Find a gift card by name (case-insensitive)"""
     name_lower = name.lower().strip()
     
-    # Exact match first
     for key, card in GIFT_CARDS.items():
         if name_lower == key or name_lower == card.name.lower():
             return card
     
-    # Partial match
     for key, card in GIFT_CARDS.items():
         if name_lower in key or name_lower in card.name.lower():
             return card
@@ -212,11 +199,10 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("🎁 Gift Cards", callback_data='giftcard')
         ],
         [
-            InlineKeyboardButton("🖼️ Generate Image", callback_data='imagine'),
-            InlineKeyboardButton("📝 Word Counter", callback_data='count')
+            InlineKeyboardButton("📝 Word Counter", callback_data='count'),
+            InlineKeyboardButton("🔍 Plagiarism Check", callback_data='plagiarism')
         ],
         [
-            InlineKeyboardButton("🔍 Plagiarism Check", callback_data='plagiarism'),
             InlineKeyboardButton("❓ Help", callback_data='help')
         ]
     ]
@@ -239,7 +225,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user = update.effective_user
     user_name = user.first_name or "User"
     
-    # Track user
     storage.save_user(user.id, {
         'username': user.username,
         'first_name': user.first_name,
@@ -254,7 +239,6 @@ Your all-in-one Telegram assistant with powerful features:
 
 🔗 **URL Shortener** - Shorten long links instantly
 🎁 **Gift Card Converter** - Check rates and convert cards
-🖼️ **AI Image Generator** - Create images from text
 📝 **Word Counter** - Count words, characters, and more
 🔍 **Plagiarism Checker** - Check content originality
 
@@ -281,10 +265,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 🎁 **Gift Card Converter**
 `/giftcard` - View all rates
 `/convert 100 Amazon` - Convert card
-
-🖼️ **Image Generator**
-`/imagine a beautiful sunset`
-→ Generates AI image from description
 
 📝 **Word Counter**
 `/count Your text here`
@@ -324,7 +304,6 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 *✨ Features:*
 ✅ URL Shortening
 ✅ Gift Card Conversion (15+ cards)
-{'✅ AI Image Generation' if PIL_AVAILABLE else '⚠️ Image Generation (PIL not available)'}
 ✅ Word Counter with Analytics
 ✅ Plagiarism Checker
 
@@ -337,7 +316,6 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 *👥 Statistics:*
 📊 {len(GIFT_CARDS)} Gift Cards Supported
 🔗 URL Shortening Active
-{'🖼️ AI Image Generation Ready' if PIL_AVAILABLE else '🖼️ Image Generation Limited'}
 
 *📞 Support:*
 For issues or suggestions, contact @prepaidsAdmin
@@ -376,10 +354,8 @@ async def shorten_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
         return
     
-    # Generate short code
     short_code = generate_short_code()
     
-    # Save to storage
     shortened = ShortenedURL(
         original=url,
         short_code=short_code,
@@ -409,7 +385,6 @@ async def giftcard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     rates_text += "💰 *Current Rates (1 USD value):*\n"
     rates_text += "─" * 30 + "\n"
     
-    # Show top 5 cards
     sorted_cards = sorted(GIFT_CARDS.values(), key=lambda x: x.rate, reverse=True)
     for card in sorted_cards[:10]:
         emoji = "🥇" if card.rate >= 0.80 else "🥈" if card.rate >= 0.70 else "🥉"
@@ -444,16 +419,13 @@ async def convert_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             )
             return
         
-        # Parse arguments
         amount_str = context.args[0].replace('$', '').replace(',', '')
         amount = float(amount_str)
         card_name = ' '.join(context.args[1:])
         
-        # Validate amount
         if amount <= 0:
             raise ValueError("Amount must be positive")
         
-        # Find card
         card = get_card_by_name(card_name)
         if not card:
             available = ", ".join([c.name for c in GIFT_CARDS.values()])
@@ -465,7 +437,6 @@ async def convert_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             )
             return
         
-        # Validate amount range
         if amount < card.min_amount:
             await update.message.reply_text(
                 f"❌ *Minimum Amount Required!*\n\n"
@@ -484,13 +455,11 @@ async def convert_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             )
             return
         
-        # Calculate conversion
         converted_amount = amount * card.rate
-        fee = amount * 0.02  # 2% service fee
+        fee = amount * 0.02
         final_amount = converted_amount - fee
         transaction_id = generate_transaction_id()
         
-        # Save transaction
         storage.transactions[transaction_id] = {
             'user_id': update.effective_user.id,
             'card': card.name,
@@ -531,126 +500,6 @@ async def convert_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             parse_mode='Markdown'
         )
 
-# ============= IMAGE GENERATOR =============
-
-async def imagine_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /imagine command"""
-    if not context.args:
-        await update.message.reply_text(
-            "🖼️ *AI Image Generator*\n\n"
-            "Describe what you want to create:\n"
-            "`/imagine a magical forest with glowing mushrooms`\n\n"
-            "📝 *Tips for better results:*\n"
-            "• Be specific and detailed\n"
-            "• Include style, colors, and mood\n"
-            "• Use descriptive adjectives",
-            parse_mode='Markdown'
-        )
-        return
-    
-    prompt = ' '.join(context.args)
-    
-    # Send processing message
-    processing_msg = await update.message.reply_text(
-        f"🎨 *Generating Your Image...*\n\n"
-        f"📝 *Prompt:* {prompt}\n"
-        f"⏳ This will take 5-10 seconds...",
-        parse_mode='Markdown'
-    )
-    
-    try:
-        if PIL_AVAILABLE:
-            # Use PIL for image generation
-            # Create a colorful abstract image
-            img_width, img_height = 512, 512
-            img = Image.new('RGB', (img_width, img_height), color=(40, 44, 52))
-            draw = ImageDraw.Draw(img)
-            
-            # Draw random geometric shapes based on prompt
-            colors = [
-                (255, 99, 71), (135, 206, 250), (255, 215, 0),
-                (152, 251, 152), (255, 182, 193), (147, 112, 219)
-            ]
-            
-            # Generate artistic shapes
-            for _ in range(30):
-                x = random.randint(0, img_width)
-                y = random.randint(0, img_height)
-                size = random.randint(20, 100)
-                color = random.choice(colors)
-                shape_type = random.choice(['circle', 'rectangle', 'triangle'])
-                
-                if shape_type == 'circle':
-                    draw.ellipse([x-size//2, y-size//2, x+size//2, y+size//2], fill=color, outline=None)
-                elif shape_type == 'rectangle':
-                    draw.rectangle([x-size//2, y-size//2, x+size//2, y+size//2], fill=color, outline=None)
-                else:
-                    points = [
-                        (x, y - size//2),
-                        (x - size//2, y + size//2),
-                        (x + size//2, y + size//2)
-                    ]
-                    draw.polygon(points, fill=color)
-            
-            # Add text overlay with prompt
-            try:
-                # Try to use a default font
-                font = ImageFont.load_default()
-                # Add prompt at bottom
-                draw.text((10, img_height - 80), "Generated Image", fill=(255, 255, 255), font=font)
-                draw.text((10, img_height - 60), prompt[:50], fill=(200, 200, 200), font=font)
-                draw.text((10, img_height - 40), f"by Prepaid23s Bot", fill=(150, 150, 150), font=font)
-            except:
-                pass
-            
-            # Add some stars/sparkles
-            for _ in range(15):
-                x = random.randint(0, img_width)
-                y = random.randint(0, img_height)
-                size = random.randint(2, 5)
-                draw.ellipse([x-size, y-size, x+size, y+size], fill=(255, 255, 255), outline=None)
-            
-            # Convert to bytes
-            import io
-            image_bytes = io.BytesIO()
-            img.save(image_bytes, format='PNG', quality=95)
-            image_bytes.seek(0)
-            
-            # Delete processing message
-            await processing_msg.delete()
-            
-            # Send the generated image
-            await update.message.reply_photo(
-                photo=image_bytes,
-                caption=f"🖼️ *Image Generated!*\n\n"
-                        f"📝 *Prompt:* {prompt}\n"
-                        f"📐 *Resolution:* 512x512\n"
-                        f"🎨 *Style:* Abstract Art\n\n"
-                        f"⚡ *Note:* For production use, integrate with an AI API.\n"
-                        f"Contact @prepaidsAdmin for premium image generation.",
-                parse_mode='Markdown'
-            )
-        else:
-            # PIL not available - send text response
-            await processing_msg.delete()
-            await update.message.reply_text(
-                f"🖼️ *Image Generation*\n\n"
-                f"📝 *Prompt:* {prompt}\n\n"
-                f"⚠️ *Image generation is currently limited.*\n"
-                f"🔄 Please try again later or contact @prepaidsAdmin.\n\n"
-                f"💡 *Word Counter:* Use /count to analyze text instead!",
-                parse_mode='Markdown'
-            )
-        
-    except Exception as e:
-        logger.error(f"Image generation error: {e}")
-        await processing_msg.delete()
-        await update.message.reply_text(
-            "❌ *Image Generation Failed!*\n\n"
-            "An error occurred. Please try again with a different prompt.",
-            parse_mode='Markdown'
-        )
-
 # ============= WORD COUNTER =============
 
 async def count_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -668,7 +517,6 @@ async def count_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     text = ' '.join(context.args)
     result = analyze_text(text)
     
-    # Determine reading level indicator
     if result.words < 50:
         level = "🟢 Short text"
     elif result.words < 200:
@@ -708,14 +556,9 @@ async def plagiarism_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     text = ' '.join(context.args)
     
-    # Simulate plagiarism check
-    # In production, integrate with plagiarism API like Copyleaks
-    
-    # Generate realistic similarity score (30-95%)
     similarity_score = random.randint(30, 95)
     uniqueness = 100 - similarity_score
     
-    # Determine rating
     if uniqueness >= 80:
         rating = "✅ Excellent! Very original content."
         emoji = "🟢"
@@ -729,7 +572,6 @@ async def plagiarism_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         emoji = "🔴"
         confidence = "High"
     
-    # Generate random sources
     sources = []
     source_names = [
         "Wikipedia", "Google Books", "Academic Journals", "News Sites",
@@ -762,9 +604,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     """Handle any text messages"""
     text = update.message.text.strip()
     
-    # Check if it's a URL
     if validate_url(text):
-        # Ask if they want to shorten it
         keyboard = [
             [
                 InlineKeyboardButton("✂️ Shorten URL", callback_data=f"shorten_{text}"),
@@ -782,7 +622,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         )
         return
     
-    # If text is long enough, offer analysis
     if len(text) > 20:
         result = analyze_text(text)
         
@@ -806,7 +645,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         )
         return
     
-    # Default response
     await update.message.reply_text(
         "🤔 *I'm not sure how to help with that.*\n\n"
         "Try one of these commands:\n"
@@ -825,7 +663,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     data = query.data
     
-    # ===== Menu Navigation =====
     if data == 'menu':
         await query.edit_message_text(
             "✨ *Main Menu*\n\n"
@@ -912,22 +749,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
         return
     
-    if data == 'imagine':
-        await query.edit_message_text(
-            "🖼️ *AI Image Generator*\n\n"
-            "Describe what you want to see:\n"
-            "`/imagine beautiful sunset over mountains`\n\n"
-            "📝 *Tips:*\n"
-            "• Be descriptive\n"
-            "• Include style (e.g., 'realistic', 'anime')\n"
-            "• Mention colors and mood",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔙 Back", callback_data='menu')]
-            ])
-        )
-        return
-    
     if data == 'count':
         await query.edit_message_text(
             "📝 *Word Counter*\n\n"
@@ -979,7 +800,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
         return
     
-    # ===== Actions =====
     if data.startswith('shorten_'):
         url = data.replace('shorten_', '')
         short_code = generate_short_code()
@@ -1040,14 +860,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             "❌ *Cancelled!*",
             parse_mode='Markdown'
         )
-        # Try to delete the original message
         try:
             await query.message.delete()
         except:
             pass
         return
     
-    # Fallback
     await query.edit_message_text(
         "🤔 I didn't understand that option.",
         parse_mode='Markdown'
@@ -1074,35 +892,25 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 def main() -> None:
     """Main function to start the bot"""
     logger.info("🚀 Starting Prepaid23s Bot...")
-    logger.info(f"✅ PIL Available: {PIL_AVAILABLE}")
-    logger.info(f"✅ Bot Token: {'*' * 10} (hidden)")
+    logger.info(f"✅ Bot Token configured")
     
-    # Create application
     application = ApplicationBuilder() \
         .token(BOT_TOKEN) \
         .build()
     
-    # Add command handlers
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("about", about_command))
     application.add_handler(CommandHandler("shorten", shorten_command))
     application.add_handler(CommandHandler("giftcard", giftcard_command))
     application.add_handler(CommandHandler("convert", convert_command))
-    application.add_handler(CommandHandler("imagine", imagine_command))
     application.add_handler(CommandHandler("count", count_command))
     application.add_handler(CommandHandler("plagiarism", plagiarism_command))
     
-    # Add message handlers
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    
-    # Add callback query handler
     application.add_handler(CallbackQueryHandler(handle_callback))
-    
-    # Add error handler
     application.add_error_handler(error_handler)
     
-    # Start the bot
     logger.info("✅ Bot is running and ready!")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
